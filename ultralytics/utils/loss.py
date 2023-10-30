@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np 
 
 from ultralytics.utils.metrics import OKS_SIGMA
 from ultralytics.utils.ops import crop_mask, xywh2xyxy, xyxy2xywh
@@ -121,7 +122,9 @@ class v8DetectionLoss:
         h = model.args  # hyperparameters
 
         m = model.model[-1]  # Detect() module
-        self.bce = nn.BCEWithLogitsLoss(reduction='none')
+
+        self.bce = nn.BCEWithLogitsLoss(weight=m.class_weights, reduction='none')
+        
         self.hyp = h
         self.stride = m.stride  # model strides
         self.nc = m.nc  # number of classes
