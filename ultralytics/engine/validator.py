@@ -78,6 +78,7 @@ class BaseValidator:
         self.dataloader = dataloader
         self.pbar = pbar
         self.model = None
+        self.class_weights_imbalance = None
         self.data = None
         self.device = None
         self.batch_i = None
@@ -112,6 +113,7 @@ class BaseValidator:
             self.data = trainer.data
             self.args.half = self.device.type != 'cpu'  # force FP16 val during training
             model = trainer.ema.ema or trainer.model
+            self.class_weights_imbalance = trainer.class_weigts_train
             model = model.half() if self.args.half else model.float()
             # self.model = model
             self.loss = torch.zeros_like(trainer.loss_items, device=trainer.device)
@@ -150,7 +152,7 @@ class BaseValidator:
 
             model.eval()
             model.warmup(imgsz=(1 if pt else self.args.batch, 3, imgsz, imgsz))  # warmup
-
+        print(f"------------ validator {self.device}")
         self.run_callbacks('on_val_start')
         dt = Profile(), Profile(), Profile(), Profile()
         bar = TQDM(self.dataloader, desc=self.get_desc(), total=len(self.dataloader))
