@@ -56,12 +56,12 @@ class DetectionTrainer(BaseTrainer):
         batch['img'] = batch['img'].to(self.device, non_blocking=True).float() / 255
         return batch
 
-    def labels_to_class_weights(self ):
+    def labels_to_class_weights(self):
+        """ calculate weights for differents class in case of imbalance data"""
         cls = np.concatenate([lb['cls'] for lb in self.train_loader.dataset.labels], 0)
-        cls = len(cls.squeeze())
+        cls = cls.squeeze()
         _, counts = np.unique(cls, return_counts=True)
         weights = len(cls) / counts
-        print(weights)
         return weights
     
     def set_model_attributes(self):
@@ -72,8 +72,6 @@ class DetectionTrainer(BaseTrainer):
         self.model.nc = self.data['nc']  # attach number of classes to model
         self.model.names = self.data['names']  # attach class names to model
         self.model.args = self.args  # attach hyperparameters to model
-        self.model.class_weights = self.labels_to_class_weights()
-
         # TODO: self.model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc
         
 
@@ -125,4 +123,5 @@ class DetectionTrainer(BaseTrainer):
         """Create a labeled training plot of the YOLO model."""
         boxes = np.concatenate([lb['bboxes'] for lb in self.train_loader.dataset.labels], 0)
         cls = np.concatenate([lb['cls'] for lb in self.train_loader.dataset.labels], 0)
+        self.model.class_weights = self.labels_to_class_weights()
         plot_labels(boxes, cls.squeeze(), names=self.data['names'], save_dir=self.save_dir, on_plot=self.on_plot)
