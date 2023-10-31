@@ -82,11 +82,15 @@ class BaseTrainer:
         """
         self.args = get_cfg(cfg, overrides)
         self.check_resume(overrides)
+        print(self.args.device)
+        print(self.args.batch)
         self.device = select_device(self.args.device, self.args.batch)
+        print(self.device)
         self.validator = None
         self.model = None
         self.metrics = None
         self.plots = {}
+        self.class_weigts_train = None
         init_seeds(self.args.seed + 1 + RANK, deterministic=self.args.deterministic)
 
         # Dirs
@@ -209,6 +213,7 @@ class BaseTrainer:
         # Model
         self.run_callbacks('on_pretrain_routine_start')
         ckpt = self.setup_model()
+        print(f"--------------- setup_train {self.device}")
         self.model = self.model.to(self.device)
         self.set_model_attributes()
 
@@ -237,8 +242,7 @@ class BaseTrainer:
             dist.broadcast(self.amp, src=0)  # broadcast the tensor from rank 0 to all other ranks (returns None)
         self.amp = bool(self.amp)  # as boolean
         self.scaler = amp.GradScaler(enabled=self.amp)
-        if world_size > 1:
-            self.model = DDP(self.model, device_ids=[RANK])
+        
 
         # Check imgsz
         gs = max(int(self.model.stride.max() if hasattr(self.model, 'stride') else 32), 32)  # grid size (max stride)
@@ -252,14 +256,19 @@ class BaseTrainer:
         batch_size = self.batch_size // max(world_size, 1)
         self.train_loader = self.get_dataloader(self.trainset, batch_size=batch_size, rank=RANK, mode='train')
         if RANK in (-1, 0):
+            print(f"----------- rank {RANK}")
             self.test_loader = self.get_dataloader(self.testset, batch_size=batch_size * 2, rank=-1, mode='val')
             self.validator = self.get_validator()
             metric_keys = self.validator.metrics.keys + self.label_loss_items(prefix='val')
             self.metrics = dict(zip(metric_keys, [0] * len(metric_keys)))
-            self.ema = ModelEMA(self.model)
             if self.args.plots:
                 self.plot_training_labels()
-
+        self.class_weigts_train  = self.labels_to_class_weights()
+        if world_size > 1:
+            self.model = DDP(self.model, device_ids=[RANK])
+        if RANK in (-1, 0):
+            self.ema = ModelEMA(self.model)
+            
         # Optimizer
         self.accumulate = max(round(self.args.nbs / self.batch_size), 1)  # accumulate loss before optimizing
         weight_decay = self.args.weight_decay * self.batch_size * self.accumulate / self.args.nbs  # scale weight_decay
@@ -516,6 +525,7 @@ class BaseTrainer:
     def set_model_attributes(self):
         """To set or update model parameters before training."""
         self.model.names = self.data['names']
+        print("*----------------- model attr")
 
     def build_targets(self, preds, targets):
         """Builds target tensors for training YOLO model."""
@@ -533,7 +543,10 @@ class BaseTrainer:
     def plot_training_labels(self):
         """Plots training labels for YOLO model."""
         pass
-
+    
+    def labels_to_class_weights(self):
+        pass
+    
     def save_metrics(self, metrics):
         """Saves training metrics to a CSV file."""
         keys, vals = list(metrics.keys()), list(metrics.values())
