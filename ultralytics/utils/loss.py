@@ -122,7 +122,7 @@ class v8DetectionLoss:
         h = model.args  # hyperparameters
 
         m = model.model[-1]  # Detect() module
-    
+        print(f" ---------------------weights for different class for imbalance problem "{model.class_weights}")
         self.bce = nn.BCEWithLogitsLoss(weight=torch.tensor(model.class_weights).to(device), reduction='none')
 
         self.hyp = h
