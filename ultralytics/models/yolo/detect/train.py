@@ -3,6 +3,7 @@
 from copy import copy
 
 import numpy as np
+import torch
 
 from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
@@ -62,6 +63,10 @@ class DetectionTrainer(BaseTrainer):
         cls = cls.squeeze()
         _, counts = np.unique(cls, return_counts=True)
         weights = len(cls) / counts
+        print(f"-------------------device {self.device}")
+        weights= torch.tensor(weights).to(self.device)
+        print(f"-------------------device {weights}")
+        self.model.class_weights_imbalance = weights
         return weights
     
     def set_model_attributes(self):
@@ -123,5 +128,4 @@ class DetectionTrainer(BaseTrainer):
         """Create a labeled training plot of the YOLO model."""
         boxes = np.concatenate([lb['bboxes'] for lb in self.train_loader.dataset.labels], 0)
         cls = np.concatenate([lb['cls'] for lb in self.train_loader.dataset.labels], 0)
-        self.model.class_weights = self.labels_to_class_weights()
         plot_labels(boxes, cls.squeeze(), names=self.data['names'], save_dir=self.save_dir, on_plot=self.on_plot)
