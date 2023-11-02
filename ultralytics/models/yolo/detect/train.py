@@ -4,6 +4,9 @@ from copy import copy
 
 import numpy as np
 import torch
+import os
+
+from sklearn.utils import class_weight  
 
 from ultralytics.data import build_dataloader, build_yolo_dataset
 from ultralytics.engine.trainer import BaseTrainer
@@ -61,8 +64,8 @@ class DetectionTrainer(BaseTrainer):
         """ calculate weights for differents class in case of imbalance data"""
         cls = np.concatenate([lb['cls'] for lb in self.train_loader.dataset.labels], 0)
         cls = cls.squeeze()
-        _, counts = np.unique(cls, return_counts=True)
-        weights = len(cls) / counts
+        labels = np.array(labels)
+        weights = class_weight.compute_class_weight(class_weight='balanced', classes = np.unique(cls), y=cls)
         print(f"-------------------device {self.device}")
         weights= torch.tensor(weights).to(self.device)
         print(f"-------------------device {weights}")
