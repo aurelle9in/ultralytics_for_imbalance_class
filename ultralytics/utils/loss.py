@@ -122,7 +122,7 @@ class v8DetectionLoss:
         h = model.args  # hyperparameters
 
         m = model.model[-1]  # Detect() module
-        print(f" ---------------------weights for different class for imbalance problem {model.class_weights}")
+        print(f" ---------------------weights for different class for imbalance problem {model.class_weights_imbalance}")
         weights = model.class_weights_imbalance
         self.bce = nn.BCEWithLogitsLoss(weight=weights, reduction='none')
         self.hyp = h
