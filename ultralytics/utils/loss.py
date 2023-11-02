@@ -124,7 +124,7 @@ class v8DetectionLoss:
         m = model.model[-1]  # Detect() module
         print(f" ---------------------weights for different class for imbalance problem {model.class_weights_imbalance}")
         self.weights = model.class_weights_imbalance
-        self.bce = nn.BCEWithLogitsLoss(weight=weights, reduction='none')
+        self.bce = nn.BCEWithLogitsLoss(weight=self.weights, reduction='none')
         self.hyp = h
         self.stride = m.stride  # model strides
         self.nc = m.nc  # number of classes
