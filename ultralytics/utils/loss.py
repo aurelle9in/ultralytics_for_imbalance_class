@@ -88,6 +88,8 @@ class BboxLoss(nn.Module):
     def _df_loss(pred_dist, target, weights ):
         """Return sum of left and right DFL losses."""
         # Distribution Focal Loss (DFL) proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
+        print(f"-------------------df_loss {pred_dist}")
+        print(f"-------------------df_loss {target}")
         tl = target.long()  # target left
         tr = tl + 1  # target right
         wl = tr - target  # weight left
