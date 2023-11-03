@@ -64,7 +64,6 @@ class DetectionTrainer(BaseTrainer):
         """ calculate weights for differents class in case of imbalance data"""
         cls = np.concatenate([lb['cls'] for lb in self.train_loader.dataset.labels], 0)
         cls = cls.squeeze()
-        labels = np.array(labels)
         weights = class_weight.compute_class_weight(class_weight='balanced', classes = np.unique(cls), y=cls)
         print(f"-------------------device {self.device}")
         weights= torch.tensor(weights).to(self.device)
