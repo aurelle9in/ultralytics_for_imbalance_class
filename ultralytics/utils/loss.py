@@ -37,18 +37,15 @@ class VarifocalLoss(nn.Module):
 class FocalLoss(nn.Module):
     """Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)."""
 
-    def __init__(self, loss_fcn, gamma=2.0):
+    def __init__(self):
         """Initializer for FocalLoss class with no parameters."""
         super().__init__()
-        self.loss_fcn = loss_fcn
-        self.reduction = loss_fcn.reduction
-        self.loss_fcn.reduction = 'none' 
-        self.gamma = gamma
+
 
     def forward(self, pred, label, gamma=2.0, alpha=0.25):
         """Calculates and updates confusion matrix for object detection/classification tasks."""
-        #loss = F.binary_cross_entropy_with_logits(pred, label, reduction='none')
-        loss = self.loss_fcn(pred, label)
+        loss = F.binary_cross_entropy_with_logits(pred, label, reduction='none')
+        # loss = self.loss_fcn(pred, label)
         # p_t = torch.exp(-loss)
         # loss *= self.alpha * (1.000001 - p_t) ** self.gamma  # non-zero power for gradient stability
 
@@ -60,12 +57,7 @@ class FocalLoss(nn.Module):
         if alpha > 0:
             alpha_factor = label * alpha + (1 - label) * (1 - alpha)
             loss *= alpha_factor
-        if self.reduction == 'mean':
-            return loss.mean()
-        elif self.reduction == 'sum':
-            return loss.sum()
-        else:  # 'none'
-            return loss
+        return loss
 
 
 class BboxLoss(nn.Module):
@@ -101,8 +93,8 @@ class BboxLoss(nn.Module):
         tr = tl + 1  # target right
         wl = tr - target  # weight left
         wr = 1 - wl  # weight right
-        return (F.cross_entropy(pred_dist, tl.view(-1), weight = weights, reduction='none').view(tl.shape) * wl +
-                F.cross_entropy(pred_dist, tr.view(-1), weight = weights, reduction='none').view(tl.shape) * wr).mean(-1, keepdim=True)
+        return (F.cross_entropy(pred_dist, tl.view(-1), reduction='none').view(tl.shape) * wl +
+                F.cross_entropy(pred_dist, tr.view(-1), reduction='none').view(tl.shape) * wr).mean(-1, keepdim=True)
 
 
 class KeypointLoss(nn.Module):
@@ -132,7 +124,7 @@ class v8DetectionLoss:
 
         m = model.model[-1]  # Detect() module
         self.weights = model.class_weights_imbalance
-        self.bce = FocalLoss(nn.BCEWithLogitsLoss(pos_weight=self.weights, reduction='mean'))
+        self.bce = FocalLoss()
         self.hyp = h
         self.stride = m.stride  # model strides
         self.nc = m.nc  # number of classes
@@ -204,7 +196,7 @@ class v8DetectionLoss:
 
         # Cls loss
         # loss[1] = self.varifocal_loss(pred_scores, target_scores, target_labels) / target_scores_sum  # VFL way
-        loss[1] = self.bce(pred_scores, target_scores.to(dtype)) / target_scores_sum  # BCE
+        loss[1] = self.bce(pred_scores, target_scores.to(dtype), gamma=2.0, alpha=0.5).sum()/ target_scores_sum  # BCE
 
         # Bbox loss
         if fg_mask.sum():
